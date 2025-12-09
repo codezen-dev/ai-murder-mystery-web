@@ -24,7 +24,7 @@ export async function callKimi(systemPrompt: string, userPrompt: string, history
 }
 
 export async function generateScriptFromAI(theme?: string): Promise<ScriptConfig> {
-  const systemPrompt = '你是一名专业的剧本杀创作者，请生成一份包含完整角色信息的剧本配置，使用简体中文。';
+  const systemPrompt = `${baseInfo}\n${stageInfo}\n最近聊天:\n${history}\n请以主持人身份，用简短中文回应。`;
   const userPrompt = `请生成包含 title, background, caseIntro, truth, roles 的 JSON，角色至少4个。主题: ${theme || '悬疑'}`;
   const content = await callKimi(systemPrompt, userPrompt);
 
@@ -74,13 +74,39 @@ export async function generateScriptFromAI(theme?: string): Promise<ScriptConfig
 
 export function buildAIPrompt(room: RoomState, userPrompt: string) {
   const script = room.script;
+  const stageLabel = room.stage;
+
+  let truthPart = '';
+  if (script) {
+    if (stageLabel === 'vote') {
+      truthPart = `真相（仅供你参考，请在玩家投票后再揭示）：${script.truth}`;
+    } else {
+      truthPart =
+          `你已经知道完整真相，但在当前阶段严禁直接说出凶手是谁、关键证据和作案手法，` +
+          `只能通过线索和引导，让玩家逐步接近真相。`;
+    }
+  }
+
   const baseInfo = script
-    ? `剧本标题: ${script.title}\n背景: ${script.background}\n案件简介: ${script.caseIntro}\n真相: ${script.truth}\n`
-    : '暂无剧本。';
-  const stageInfo = `当前阶段: ${room.stage}`;
-  const history = room.messages.slice(-10)
-    .map((m) => `${m.from}: ${m.content}`)
-    .join('\n');
-  const systemPrompt = `${baseInfo}\n${stageInfo}\n最近聊天:\n${history}\n请以主持人身份，用简短中文回应。`;
+      ? `剧本标题: ${script.title}\n背景: ${script.background}\n案件简介: ${script.caseIntro}\n${truthPart}\n`
+      : '暂无剧本。';
+
+  const stageInfo = `当前阶段: ${stageLabel}（setup=导入, clue=线索, debate=辩论, vote=投票）`;
+
+  const historyText = room.messages
+      .slice(-10)
+      .map((m) => `${m.from}: ${m.content}`)
+      .join('\n');
+
+  const systemPrompt =
+      `${baseInfo}\n${stageInfo}\n` +
+      `最近聊天记录（从旧到新）：\n${historyText}\n\n` +
+      `你是线下剧本杀的主持人（DM），你的目标是：\n` +
+      `1. 用自然、口语化的简体中文说话，营造紧张又好玩的氛围。\n` +
+      `2. 每次回答控制在 80~200 字。\n` +
+      `3. 主动引导玩家提问、讨论、怀疑某些人，而不是直接告诉他们答案。\n` +
+      `4. 在投票阶段前，不要暴露真相，只能给出间接提示。\n`;
+
   return { systemPrompt, userPrompt };
 }
+

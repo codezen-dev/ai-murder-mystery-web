@@ -107,14 +107,26 @@ io.on('connection', (socket) => {
   socket.on('assign_role', (payload: AssignRolePayload) => {
     const room = getRoom(payload.roomId);
     if (!room || room.hostId !== socket.id || !room.script) return;
+
     const role = room.script.roles.find((r) => r.id === payload.roleId);
     if (!role) return;
+
     assignRole(room, payload.playerId, payload.roleId);
+
+    // 只给该玩家自己的角色卡，禁止带 truth
     io.to(payload.playerId).emit('your_role', {
-      role: { ...role, truth: room.script.truth },
+      role: {
+        id: role.id,
+        name: role.name,
+        identity: role.identity,
+        publicInfo: role.publicInfo,
+        secretInfo: role.secretInfo,
+      },
     });
+
     io.to(payload.roomId).emit('player_list_update', getPublicPlayerList(room));
   });
+
 
   socket.on('change_stage', (payload: ChangeStagePayload) => {
     const room = getRoom(payload.roomId);
