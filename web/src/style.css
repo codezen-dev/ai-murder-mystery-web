@@ -1,0 +1,81 @@
+:root {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.btn {
+  background: linear-gradient(135deg, #6366f1, #22d3ee);
+  border: none;
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 0.6rem;
+  margin: 0.2rem 0 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0b1221;
+  color: #e2e8f0;
+}
+
+.flex {
+  display: flex;
+  gap: 1rem;
+}
+
+.flex-1 { flex: 1; }
+
+.chat-box {
+  height: 240px;
+  overflow: auto;
+  background: #0b1221;
+  border-radius: 8px;
+  padding: 0.6rem;
+  border: 1px solid #334155;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: #0ea5e9;
+  color: #0b1221;
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+}
+
+.stage-buttons button { margin-right: 0.5rem; }
