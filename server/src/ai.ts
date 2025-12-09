@@ -1,38 +1,72 @@
 import axios from 'axios';
-import { ScriptConfig, RoomState } from './types.js';
+import type { ScriptConfig, RoomState } from './types.js';
 
-export async function callKimi(systemPrompt: string, userPrompt: string, history: { role: string; content: string }[] = []) {
+export async function callKimi(
+    systemPrompt: string,
+    userPrompt: string,
+    history: { role: string; content: string }[] = []
+) {
   const resp = await axios.post(
-    'https://api.moonshot.cn/v1/chat/completions',
-    {
-      model: 'moonshot-v1-8k',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...history,
-        { role: 'user', content: userPrompt },
-      ],
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.KIMI_API_KEY}`,
-        'Content-Type': 'application/json',
+      'https://api.moonshot.cn/v1/chat/completions',
+      {
+        model: 'moonshot-v1-8k',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history,
+          { role: 'user', content: userPrompt },
+        ],
       },
-    }
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.KIMI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
   );
 
   return resp.data.choices?.[0]?.message?.content || '';
 }
 
+/**
+ * 用 Kimi 生成一个完整的剧本配置（ScriptConfig）
+ */
 export async function generateScriptFromAI(theme?: string): Promise<ScriptConfig> {
-  const systemPrompt = `${baseInfo}\n${stageInfo}\n最近聊天:\n${history}\n请以主持人身份，用简短中文回应。`;
-  const userPrompt = `请生成包含 title, background, caseIntro, truth, roles 的 JSON，角色至少4个。主题: ${theme || '悬疑'}`;
+  // 这里不再引用 baseInfo / stageInfo / history，而是写死一个“编剧说明”
+  const systemPrompt = [
+    '你是一名专业的线下剧本杀编剧，擅长创作 4~6 人的悬疑剧本。',
+    '现在请你只返回一个符合以下结构的 JSON，不能出现任何多余文字：',
+    '{',
+    '  "title": "剧本标题",',
+    '  "background": "世界观和大背景",',
+    '  "caseIntro": "案件简单介绍（给玩家看的）",',
+    '  "truth": "完整真相（仅主持人可见）",',
+    '  "roles": [',
+    '    {',
+    '      "id": "r1",',
+    '      "name": "角色名",',
+    '      "identity": "角色身份简介",',
+    '      "publicInfo": "其他玩家可见的信息",',
+    '      "secretInfo": "只有该角色自己知道的秘密",',
+    '    }',
+    '  ]',
+    '}',
+    '',
+    '要求：',
+    '1. 角色数量至少 4 个；',
+    '2. JSON 必须是合法格式，字段齐全；',
+    '3. 不要用 Markdown，不要用 ```，只输出 JSON 字符串本身。'
+  ].join('\n');
+
+  const userPrompt = `请围绕“${theme || '悬疑'}”主题，生成一个完整剧本设定，只输出 JSON。`;
+
   const content = await callKimi(systemPrompt, userPrompt);
 
   try {
     const parsed = JSON.parse(content);
-    return parsed;
+    return parsed as ScriptConfig;
   } catch (err) {
-    // fallback simple script
+    console.error('解析 Kimi 返回失败，使用兜底剧本：', err);
+    // fallback 简单剧本
     return {
       title: 'AI 剧本示例',
       background: '一座孤岛上的别墅聚会，风暴导致所有人被困。',
@@ -72,6 +106,9 @@ export async function generateScriptFromAI(theme?: string): Promise<ScriptConfig
   }
 }
 
+/**
+ * 根据房间状态构造给 Kimi 的 systemPrompt / userPrompt
+ */
 export function buildAIPrompt(room: RoomState, userPrompt: string) {
   const script = room.script;
   const stageLabel = room.stage;
@@ -109,4 +146,3 @@ export function buildAIPrompt(room: RoomState, userPrompt: string) {
 
   return { systemPrompt, userPrompt };
 }
-
