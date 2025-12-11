@@ -27,6 +27,14 @@
           </div>
           <div v-else>等待主持人生成剧本...</div>
         </div>
+        <div class="card">
+          <h3>角色一览</h3>
+          <ul>
+            <li v-for="r in publicRoles" :key="r.id">
+              {{ r.name }}
+            </li>
+          </ul>
+        </div>
 
         <div class="card" v-if="myRole">
           <h3>你的角色</h3>
@@ -37,7 +45,7 @@
         <ChatPanel :messages="messages" @send="sendChat" sendable />
         <div class="card">
           <h3>阶段</h3>
-          <p>当前阶段：{{ stage }}</p>
+          <p>当前阶段：{{ stageNameMap[stage] }}</p>
         </div>
       </div>
     </div>
@@ -59,6 +67,15 @@ const messages = ref<ChatMessage[]>([]);
 const stage = ref<GameStage>('setup');
 let socket: Socket | null = null;
 const connected = ref(false);
+const publicRoles = ref<
+  Array<{ id: string; name: string; identity?: string }>
+>([]);
+const stageNameMap: Record<GameStage, string> = {
+  setup: '发本阶段',
+  clue: '线索阶段',
+  debate: '讨论阶段',
+  vote: '投票阶段',
+};
 
 const joinRoom = () => {
   if (!socket || !roomId.value || !name.value) return;
@@ -70,6 +87,7 @@ const sendChat = (content: string) => {
   socket.emit('send_chat', { roomId: roomId.value, from: name.value, content });
 };
 
+
 onMounted(() => {
   socket = io('http://localhost:3000');
   socket.on('connect', () => {
@@ -80,7 +98,14 @@ onMounted(() => {
     if (data.publicScript) {
       publicScript.value = data.publicScript;
     }
+
+    // 找到“我自己”的名字，同步回来，避免一直显示“玩家”
+    const me = data.players?.find((p: any) => p.id === socket?.id);
+    if (me && me.name) {
+      name.value = me.name;
+    }
   });
+
   socket.on('public_script_info', (info) => {
     publicScript.value = info;
   });
@@ -93,6 +118,10 @@ onMounted(() => {
   socket.on('stage_changed', (s: GameStage) => {
     stage.value = s;
   });
+  socket.on("public_roles", (list) => {
+    publicRoles.value = list;
+  });
+
 });
 
 onBeforeUnmount(() => {

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { RoomState, PlayerInfo, ScriptConfig, ChatMessage, GameStage } from './types.js';
+import { RoomState, PlayerInfo, ScriptConfig, ChatMessage, GameStage } from './types';
 
 // Simple in-memory room store
 const rooms: Map<string, RoomState> = new Map();
@@ -52,8 +52,15 @@ export function addMessage(room: RoomState, message: ChatMessage) {
 }
 
 export function getPublicPlayerList(room: RoomState) {
-  return room.players.map((p) => ({ id: p.id, name: p.name, roleAssigned: Boolean(p.roleId) }));
+  return room.players
+    .filter((p) => p.id !== room.hostId)  // 主持人不出现在玩家列表
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      roleAssigned: Boolean(p.roleId),
+    }));
 }
+
 
 export function getRecentMessages(room: RoomState, limit = 10) {
   return room.messages.slice(-limit);

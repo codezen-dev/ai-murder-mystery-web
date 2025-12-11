@@ -18,15 +18,28 @@
 
     <div class="card" v-if="connected">
       <h3>剧本控制</h3>
-      <div class="flex">
+      <div class="flex script-row">
         <div class="flex-1">
           <label>主题（可选）</label>
-          <input v-model="theme" placeholder="例如：校园、科幻" />
+          <input v-model="theme" placeholder="例如：校园、科幻、密室" />
         </div>
-        <div>
-          <button class="btn" @click="generateScript">生成剧本</button>
+
+        <div class="player-count">
+          <label>人数</label>
+          <select v-model.number="playerCount">
+            <option :value="4">4 人本</option>
+            <option :value="5">5 人本</option>
+            <option :value="6">6 人本</option>
+          </select>
+        </div>
+
+        <div class="btn-wrap">
+          <button class="btn" :disabled="scriptLoading" @click="generateScript">
+            {{ scriptLoading ? '生成中…' : '生成剧本' }}
+          </button>
         </div>
       </div>
+
       <div v-if="script">
         <h4>{{ script.title }}</h4>
         <p>{{ script.background }}</p>
@@ -59,11 +72,16 @@
         <div class="card">
           <h3>阶段切换</h3>
           <div class="stage-buttons">
-            <button class="btn" v-for="s in stages" :key="s" @click="setStage(s)" style="margin-right:0.5rem;">
-              {{ s }}
+            <button class="btn"
+              v-for="s in stages"
+              :key="s"
+              @click="setStage(s)"
+              style="margin-right:0.5rem;"
+            >
+              {{ stageNameMap[s] }}
             </button>
           </div>
-          <p>当前阶段：{{ stage }}</p>
+          <p>当前阶段：{{ stageNameMap[stage] }}</p>
         </div>
       </div>
       <div class="flex-1">
@@ -88,16 +106,24 @@ import { PlayerSummary, ScriptConfig, ChatMessage, GameStage } from '../types';
 const roomId = ref('room-1');
 const name = ref('主持人');
 const theme = ref('');
+const playerCount = ref(5);              // 新增：默认 5 人本
 const script = ref<ScriptConfig | null>(null);
+
 const players = ref<PlayerSummary[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const stage = ref<GameStage>('setup');
 const stages: GameStage[] = ['setup', 'clue', 'debate', 'vote'];
+const stageNameMap: Record<GameStage, string> = {
+  setup: "发本阶段",
+  clue: "线索阶段",
+  debate: "讨论阶段",
+  vote: "投票阶段",
+};
 const aiPrompt = ref('');
 const assignSelections = reactive<Record<string, string>>({});
 let socket: Socket | null = null;
 const connected = ref(false);
-
+const scriptLoading = ref(false); 
 const createRoom = () => {
   if (!roomId.value || !name.value) return;
   if (!socket) return;
@@ -105,9 +131,18 @@ const createRoom = () => {
 };
 
 const generateScript = () => {
-  if (!socket) return;
-  socket.emit('generate_script', { roomId: roomId.value, options: { theme: theme.value } });
+  if (!socket || scriptLoading.value) return;
+
+  scriptLoading.value = true;
+  socket.emit('generate_script', {
+    roomId: roomId.value,
+    options: {
+      theme: theme.value,
+      playerCount: playerCount.value,    // 把人数传给后端
+    },
+  });
 };
+
 
 const assign = (playerId: string) => {
   if (!socket) return;
@@ -151,8 +186,10 @@ onMounted(() => {
     script.value = { ...info, truth: '', roles: script.value?.roles || [] } as any;
   });
   socket.on('script_generated', (data: ScriptConfig) => {
+    scriptLoading.value = false;
     script.value = data;
   });
+
   socket.on('your_role', () => {});
   socket.on('chat_message', (msg: ChatMessage) => {
     messages.value.push(msg);
@@ -166,3 +203,17 @@ onBeforeUnmount(() => {
   socket?.disconnect();
 });
 </script>
+<style scoped>
+  .script-row {
+    align-items: flex-end;
+  }
+  
+  .player-count {
+    margin-left: 0.75rem;
+  }
+  
+  .btn-wrap {
+    margin-left: 0.75rem;
+  }
+</style>
+  

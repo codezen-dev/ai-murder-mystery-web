@@ -44,10 +44,16 @@ export interface JoinRoomPayload {
   asHost: boolean;
 }
 
+export interface GenerateScriptOptions {
+  theme?: string;
+  playerCount?: number;
+}
+
 export interface GenerateScriptPayload {
   roomId: string;
-  options?: { theme?: string };
+  options?: GenerateScriptOptions;
 }
+
 
 export interface AssignRolePayload {
   roomId: string;
