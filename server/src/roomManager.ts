@@ -22,12 +22,24 @@ export function getRoom(roomId: string): RoomState | undefined {
   return rooms.get(roomId);
 }
 
-export function addPlayer(room: RoomState, player: PlayerInfo) {
-  const exists = room.players.find((p) => p.id === player.id);
-  if (!exists) {
-    room.players.push(player);
+export function addPlayer(room: RoomState, player: PlayerInfo): PlayerInfo {
+  // 如果带着 clientId 进房间，优先按 clientId 判断是不是老玩家
+  if (player.clientId) {
+    const exist = room.players.find(p => p.clientId === player.clientId);
+    if (exist) {
+      // 刷新之后 socket.id 变了，这里更新成新的连接 id
+      exist.id = player.id;
+      // 名字也以最新的一次为准（防止你后面加「改名」功能）
+      exist.name = player.name;
+      return exist;
+    }
   }
+
+  // 没有 clientId 或者找不到 ⇒ 当成新玩家插入
+  room.players.push(player);
+  return player;
 }
+
 
 export function setScript(room: RoomState, script: ScriptConfig) {
   room.script = script;

@@ -168,7 +168,28 @@ const askAI = () => {
 };
 
 onMounted(() => {
-  socket = io('http://localhost:3000');
+  // Vite 提供的环境变量：
+  // 开发模式：import.meta.env.DEV === true
+  // 打包后线上：import.meta.env.DEV === false
+  const isDev = import.meta.env.DEV;
+
+let socketUrl: string;
+let socketPath: string;
+
+if (isDev) {
+  // 本地开发：前端 5173，后端 3000
+  socketUrl = 'http://localhost:3000';
+  socketPath = '/socket.io';
+} else {
+  // 线上环境：通过 Nginx /murder/ 访问
+  socketUrl = window.location.origin;        // 比如 https://www.join-ivr.com
+  socketPath = '/murder/socket.io';         // 注意这里要带 /socket.io
+}
+
+socket = io(socketUrl, {
+  path: socketPath,
+});
+  // socket = io('http://localhost:3000');
   socket.on('connect', () => {
     connected.value = true;
   });

@@ -79,7 +79,7 @@ const stageNameMap: Record<GameStage, string> = {
 
 const joinRoom = () => {
   if (!socket || !roomId.value || !name.value) return;
-  socket.emit('join_room', { roomId: roomId.value, name: name.value, asHost: false });
+  socket.emit('join_room', { roomId: roomId.value, name: name.value, asHost: false, clientId: clientId.value });
 };
 
 const sendChat = (content: string) => {
@@ -87,9 +87,49 @@ const sendChat = (content: string) => {
   socket.emit('send_chat', { roomId: roomId.value, from: name.value, content });
 };
 
+const CLIENT_ID_KEY = 'mm-player-client-id';
+const clientId = ref<string | null>(null);
+
+function ensureClientId() {
+  // 尝试从 localStorage 拿一个固定 id
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    // 没有就生成一个新的
+    if (window.crypto && 'randomUUID' in window.crypto) {
+      id = window.crypto.randomUUID();
+    } else {
+      id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+    localStorage.setItem(CLIENT_ID_KEY, id);
+  }
+  clientId.value = id;
+}
+
+
 
 onMounted(() => {
-  socket = io('http://localhost:3000');
+  // Vite 提供的环境变量：
+  // 开发模式：import.meta.env.DEV === true
+  // 打包后线上：import.meta.env.DEV === false
+  const isDev = import.meta.env.DEV;
+
+  let socketUrl: string;
+  let socketPath: string;
+
+  if (isDev) {
+    // 本地开发：前端 5173，后端 3000
+    socketUrl = 'http://localhost:3000';
+    socketPath = '/socket.io';
+  } else {
+    // 线上环境：通过 Nginx /murder/ 访问
+    socketUrl = window.location.origin;        // 比如 https://www.join-ivr.com
+    socketPath = '/murder/socket.io';         // 注意这里要带 /socket.io
+  }
+
+  socket = io(socketUrl, {
+    path: socketPath,
+  });
+  ensureClientId();
   socket.on('connect', () => {
     connected.value = true;
   });

@@ -12,6 +12,7 @@ import {
   SendChatPayload,
   AskAIPayload,
   RoomState,
+  ChatMessage,
 } from './types';
 import {
   getOrCreateRoom,
@@ -114,7 +115,7 @@ io.on('connection', (socket) => {
       }
   
       // 真正加入玩家列表
-      addPlayer(room!, { id: socket.id, name: displayName });
+      addPlayer(room!, { id: socket.id, name: displayName, clientId: payload.clientId });
   
       // 如果房间已有剧本，给这个新玩家推一次角色列表 + 自己的角色
       if (room!.script) {
@@ -261,10 +262,18 @@ io.on('connection', (socket) => {
   socket.on('send_chat', (payload: SendChatPayload) => {
     const room = getRoom(payload.roomId);
     if (!room) return;
-    const message = { from: payload.from, content: payload.content, type: 'player', timestamp: Date.now() };
+  
+    const message: ChatMessage = {
+      from: payload.from,
+      content: payload.content,
+      type: 'player',          // 字面量："player"
+      timestamp: Date.now(),
+    };
+  
     addMessage(room, message);
     io.to(payload.roomId).emit('chat_message', message);
   });
+  
 
   socket.on('ask_ai', async (payload: AskAIPayload) => {
     const room = getRoom(payload.roomId);
@@ -272,7 +281,13 @@ io.on('connection', (socket) => {
     const { systemPrompt, userPrompt } = buildAIPrompt(room, payload.prompt);
     const history = getRecentMessages(room).map((m) => ({ role: m.type === 'ai' ? 'assistant' : 'user', content: `${m.from}:${m.content}` }));
     const content = await callKimi(systemPrompt, userPrompt, history);
-    const message = { from: 'AI 主持人', content, type: 'ai', timestamp: Date.now() };
+    const message: ChatMessage = {
+      from: 'AI 主持人',
+      content,
+      type: 'ai',          // 字面量："ai"
+      timestamp: Date.now(),
+    };
+    
     addMessage(room, message);
     io.to(payload.roomId).emit('chat_message', message);
   });

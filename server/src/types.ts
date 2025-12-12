@@ -4,6 +4,7 @@ export interface PlayerInfo {
   id: string;
   name: string;
   roleId?: string;
+  clientId?: string; 
 }
 
 export interface RoleCard {
@@ -42,6 +43,7 @@ export interface JoinRoomPayload {
   roomId: string;
   name: string;
   asHost: boolean;
+  clientId?: string;
 }
 
 export interface GenerateScriptOptions {
